@@ -37,6 +37,9 @@ Plays also require extra vars to be supplied on invocation via ansible-playbook:
 - environment - used for resource tags and resource names
 - iam_role - an IAM role (as ARN) to use for the public servers
 - key_pair - the name of the keypair to use for the EC2 instances
+- database_name - name of Aurora database that will be set up
+- database_user - root user for the Aurora database
+- database_password - password
 
 
 Example Playbook
@@ -44,9 +47,7 @@ Example Playbook
 
 Note: use the appropriate real-world value for your remote_cidr
 
-=======
 Role play:
-
 ~~~~
   ---
   - name: Create a Scenario 2 VPC with public and private subnets in two AZs
@@ -55,5 +56,5 @@ Role play:
     gather_facts: yes
 
     roles:
-    - { role: aws-vpc-scenario2, remote_cidr: 92.237.9.56/32, aws_env: dev01, iam_role: , aws_region: eu-west-2}
+    - { role: aws-vpc-scenario2, remote_cidr: 92.237.9.56/32, aws_env: dev01, iam_role: , key_pair: keypair_name, database_name: testdatabase, database_user: root_user, database_password: unsafe}
 ~~~~

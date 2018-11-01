@@ -11,6 +11,25 @@
   assert:
     that: 'aws_env is defined'
 
+- name: Check that keypair name was passed into the play as an extra variable
+  assert:
+    that: 'key_pair is defined'
+
+- name: Check that keypair name was passed into the play as an extra variable
+  assert:
+    that: 'key_pair is defined'
+
+- name: Check that database name was passed into the play as an extra variable
+  assert:
+    that: 'database_name is defined'
+
+- name: Check that database root user name was passed into the play as an extra variable
+  assert:
+    that: 'database_user is defined'
+
+- name: Check that database root user password was passed into the play as an extra variable
+  assert:
+    that: 'database_password is defined'
 
 ###############################################################################
 
@@ -115,18 +134,6 @@
   set_fact:
     igw_id: "{{ myvpc_igw.gateway_id }}"
 
-# no tags support in ec2_vpc_igw module as of Ansible v2.2.0.0
-# - name: Tag IGW
-#   ec2_tag:
-#     resource: "{{ igw_id }}"
-#     state: present
-#     tags:
-#       Name:           "{{ aws_env }}_igw"
-#       VPC:            "{{ vpc_name }}"
-#       Environment:    "{{ aws_env }}"
-
-# create NAT Gateways
-
 - name: Create AZ1 NAT Gateway
   ec2_vpc_nat_gateway:
     state: present
@@ -139,7 +146,6 @@
   set_fact:
     nat_gateway_id_az1: "{{ nat_gateway_az1.nat_gateway_id }}"
 
-
 - name: Create AZ2 NAT Gateway
   ec2_vpc_nat_gateway:
     state: present
@@ -151,16 +157,6 @@
 - name: Create variable for AZ2 NAT Gateway
   set_fact:
     nat_gateway_id_az2: "{{ nat_gateway_az2.nat_gateway_id }}"
-
-# # persist NGWs id for later
-# - name: Tag VPC with NAT Gateway IDs
-#   ec2_tag:
-#     resource: "{{ vpc_id }}"
-#     state: present
-#     tags:
-#       Name:           "{{ vpc_name }}"
-
-# create route tables
 
 - name: Create public route table
   ec2_vpc_route_table:
@@ -234,10 +230,6 @@
     vpc_id: "{{ vpc_id }}"
     rules:
       - proto:      "tcp"
-        from_port:  "80"
-        to_port:    "80"
-        group_name: "{{ private_sg_name }}"
-      - proto:      "tcp"
         from_port:  "443"
         to_port:    "443"
         group_name: "{{ private_sg_name }}"
@@ -250,10 +242,6 @@
         to_port:    "3306"
         cidr_ip:    "{{ vpc_cidr }}"
     rules_egress:
-      - proto:      "tcp"
-        from_port:  "80"
-        to_port:    "80"
-        cidr_ip:    "{{ public_cidr }}"
       - proto:      "tcp"
         from_port:  "443"
         to_port:    "443"
@@ -275,10 +263,6 @@
     vpc_id: "{{ vpc_id }}"
     rules:
       - proto:      "tcp"
-        from_port:  "80"
-        to_port:    "80"
-        cidr_ip:    "{{ public_cidr }}"
-      - proto:      "tcp"
         from_port:  "443"
         to_port:    "443"
         cidr_ip:    "{{ public_cidr }}"
@@ -291,10 +275,6 @@
         from_port:  "22"
         to_port:    "22"
         group_name: "{{ private_sg_name }}"
-      - proto:      "tcp"
-        from_port:  "80"
-        to_port:    "80"
-        cidr_ip:    "{{ public_cidr }}"
       - proto:      "tcp"
         from_port:  "443"
         to_port:    "443"
@@ -309,25 +289,6 @@
   set_fact:
     public_instance_sg_id: "{{ public_instance_sg.group_id }}"
 
-# # no tags support in ec2_group module as of Ansible v2.2.0.0
-# - name: Tag private security group
-#   ec2_tag:
-#     resource: "{{ private_instance_sg_id }}"
-#     state: present
-#     tags:
-#       Name:           "{{ aws_env }}_private_sg"
-#       VPC:            "{{ vpc_name }}"
-#       Environment:    "{{ aws_env }}"
-#
-# - name: Tag public security group
-#   ec2_tag:
-#     resource: "{{ public_instance_sg_id }}"
-#     state: present
-#     tags:
-#       Name:           "{{ aws_env }}_public_sg"
-#       VPC:            "{{ vpc_name }}"
-#       Environment:    "{{ aws_env }}"
-
 - name: Create and associate private network ACL with private subnets
   ec2_vpc_nacl:
     vpc_id: "{{ vpc_id }}"
@@ -336,20 +297,16 @@
     tags:
       Environment: "{{ aws_env }}"
     ingress: [
-        # rule no, protocol, allow/deny, cidr, icmp_code, icmp_type, port from, port to
-        [100, 'tcp', 'allow', "{{ public_cidr }}", null, null, 80, 80],
-        [110, 'tcp', 'allow', "{{ public_cidr }}", null, null, 443, 443],
-        [120, 'tcp', 'allow', "{{ vpc_cidr }}", null, null, 22, 22],
-        [140, 'tcp', 'allow', "{{ public_cidr }}", null, null, 1024, 65535],
-        [150, 'icmp', 'allow', "{{ vpc_cidr }}", -1, -1]
+        [100, 'tcp', 'allow', "{{ public_cidr }}", null, null, 443, 443],
+        [110, 'tcp', 'allow', "{{ vpc_cidr }}", null, null, 22, 22],
+        [120, 'tcp', 'allow', "{{ public_cidr }}", null, null, 1024, 65535],
+        [130, 'icmp', 'allow', "{{ vpc_cidr }}", -1, -1]
      ]
     egress: [
-        [100, 'tcp', 'allow', "{{ public_cidr }}", null, null, 80, 80],
-        [110, 'tcp', 'allow', "{{ public_cidr }}", null, null, 443, 443],
-        [120, 'tcp', 'allow', "{{ vpc_cidr }}", null, null, 1024, 65535],
-        [150, 'tcp', 'allow', "{{ private_subnet_az1_cidr }}", null, null, 22, 22],
-        [151, 'tcp', 'allow', "{{ private_subnet_az2_cidr }}", null, null, 22, 22],
-        [160, 'icmp', 'allow', "{{ vpc_cidr }}", -1, -1]
+        [100, 'tcp', 'allow', "{{ public_cidr }}", null, null, 443, 443],
+        [110, 'tcp', 'allow', "{{ vpc_cidr }}", null, null, 1024, 65535],
+        [120, 'tcp', 'allow', "{{ private_subnet_az1_cidr }}", null, null, 22, 22],
+        [130, 'icmp', 'allow', "{{ vpc_cidr }}", -1, -1]
      ]
     state: "present"
 
@@ -361,44 +318,33 @@
     tags:
       Environment: "{{ aws_env }}"
     ingress: [
-        # rule no, protocol, allow/deny, cidr, icmp_code, icmp_type, port from, port to
-        [100, 'tcp', 'allow', "{{ public_cidr }}", null, null, 80, 80],
-        [110, 'tcp', 'allow', "{{ public_cidr }}", null, null, 443, 443],
-        [120, 'tcp', 'allow', "{{ remote_cidr }}", null, null, 22, 22],
-        [140, 'tcp', 'allow', "{{ public_cidr }}", null, null, 1024, 65535],
-        [150, 'icmp', 'allow', "{{ vpc_cidr }}", -1, -1]
+        [100, 'tcp', 'allow', "{{ public_cidr }}", null, null, 443, 443],
+        [110, 'tcp', 'allow', "{{ remote_cidr }}", null, null, 22, 22],
+        [120, 'tcp', 'allow', "{{ public_cidr }}", null, null, 1024, 65535],
+        [130, 'icmp', 'allow', "{{ vpc_cidr }}", -1, -1]
      ]
     egress: [
-        [100, 'tcp', 'allow', "{{ public_cidr }}", null, null, 80, 80],
-        [110, 'tcp', 'allow', "{{ public_cidr }}", null, null, 443, 443],
-        [130, 'tcp', 'allow', "{{ private_subnet_az1_cidr }}", null, null, 3306, 3306],
-        [131, 'tcp', 'allow', "{{ private_subnet_az2_cidr }}", null, null, 3306, 3306],
-        [140, 'tcp', 'allow', "{{ public_cidr }}", null, null, 1024, 65535],
-        [150, 'tcp', 'allow', "{{ private_subnet_az1_cidr }}", null, null, 22, 22],
-        [151, 'tcp', 'allow', "{{ private_subnet_az2_cidr }}", null, null, 22, 22],
-        [160, 'icmp', 'allow', "{{ public_cidr }}", -1, -1]
+        [100, 'tcp', 'allow', "{{ public_cidr }}", null, null, 443, 443],
+        [110, 'tcp', 'allow', "{{ private_subnet_az1_cidr }}", null, null, 3306, 3306],
+        [111, 'tcp', 'allow', "{{ private_subnet_az2_cidr }}", null, null, 3306, 3306],
+        [120, 'tcp', 'allow', "{{ public_cidr }}", null, null, 1024, 65535],
+        [130, 'tcp', 'allow', "{{ private_subnet_az1_cidr }}", null, null, 22, 22],
+        [131, 'tcp', 'allow', "{{ private_subnet_az2_cidr }}", null, null, 22, 22],
+        [140, 'icmp', 'allow', "{{ public_cidr }}", -1, -1]
      ]
-    state: "present"
-
-- name: Create a RDS subnet group for private subnets
-  rds_subnet_group:
-    name: "dbsubnetgroup_{{ vpc_name }}_private"
-    description: "Allows RDS communication between private subnets"
-    subnets: [ "{{ private_subnet_az1_id }}", "{{ private_subnet_az2_id }}" ]
-    region: "{{ aws_region }}"
     state: "present"
 
 - name: Create a public machine in AZ1
   ec2_instance:
     name: "{{ aws_env }}-public1"
-    key_name: "KeyPair"
+    key_name: "{{ key_pair }}"
     vpc_subnet_id: "{{ public_subnet_az1_id }}"
     instance_type: t2.micro
     security_group: "{{ public_sg_name }}"
     tenancy: default
     user_data: |
             #!/bin/bash
-            yum update
+            yum update -y
             yum install httpd -y
             service httpd start
             chkconfig httpd on
@@ -415,14 +361,14 @@
 - name: Create a public machine in AZ2
   ec2_instance:
     name: "{{ aws_env }}-public2"
-    key_name: "KeyPair"
+    key_name: "{{ key_pair }}"
     vpc_subnet_id: "{{ public_subnet_az2_id }}"
     instance_type: t2.micro
     security_group: "{{ public_sg_name }}"
     tenancy: default
     user_data: |
             #!/bin/bash
-            yum update
+            yum update -y
             yum install httpd -y
             service httpd start
             chkconfig httpd on
@@ -439,7 +385,7 @@
 - name: Create a private machine in AZ1
   ec2_instance:
     name: "{{ aws_env }}-private1"
-    key_name: "KeyPair"
+    key_name: "{{ key_pair }}"
     vpc_subnet_id: "{{ private_subnet_az1_id }}"
     instance_type: t2.micro
     security_group: "{{ private_sg_name }}"
@@ -452,6 +398,20 @@
 - name: Create variable for EC2 ID in private AZ1
   set_fact:
     vpc_id_1: "{{ private_ec2_1.instance_ids[0] }}"
+
+- name: Create a bastion machine in AZ1
+  ec2_instance:
+    name: "{{ aws_env }}-public-bastion"
+    key_name: "{{ key_pair }}"
+    vpc_subnet_id: "{{ public_subnet_az1_id }}"
+    instance_type: t2.micro
+    security_group: "{{ bastion_sg_name }}"
+    tenancy: default
+    network:
+      assign_public_ip: false
+    image_id: ami-00ee3b59e07408c27
+  register: bastion_server
+
 
 ########################
 # Set up load balancer
@@ -500,3 +460,37 @@
   with_items:
     - "{{ vpc_id_1 }}"
     - "{{ vpc_id_2 }}"
+
+#########################
+# AURORA DATABASE
+#########################
+
+# Create subnet group
+- name: Create a RDS subnet group for private subnets
+  rds_subnet_group:
+    name: "dbsubnetgroup_{{ vpc_name }}_private"
+    description: "Allows RDS communication between private subnets"
+    subnets: [ "{{ private_subnet_az1_id }}", "{{ private_subnet_az2_id }}" ]
+    region: "{{ aws_region }}"
+    state: "present"
+  register: rds_subnet
+
+- name: check return of subnet security_group
+  debug:
+      var: rds_subnet
+
+- name: Create variable for Subnet ID
+  set_fact:
+    subnet_group_id: "{{ rds_subnet.subnet_group.vpc_id }}"
+
+- name: Set up Aurora
+  rds:
+    command: create
+    instance_name: "{{ database_name }}"
+    db_engine: aurora
+    region: "{{ aws_region }}"
+    size: 10
+    subnet: "{{ subnet_group_id }}"
+    instance_type: db.t2.small
+    username: "{{ database_user }}"
+    password: "{{ database_password }}"
