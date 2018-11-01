@@ -11,10 +11,6 @@
   assert:
     that: 'aws_env is defined'
 
-- name: Check that region was passed into the play as an extra variable
-  assert:
-    that: 'aws_region is defined'
-
 
 ###############################################################################
 
@@ -56,6 +52,7 @@
     cidr:             "{{ private_subnet_az1_cidr }}"
     az:               "{{ aws_az1 }}"
     state:            "present"
+    region:           "{{ aws_region }}"
     tags:
       Name:           "{{ aws_env }}_private_az1"
       VPC:            "{{ vpc_name }}"
@@ -72,6 +69,7 @@
     cidr:             "{{ public_subnet_az2_cidr }}"
     az:               "{{ aws_az2 }}"
     state:            "present"
+    region:           "{{ aws_region }}"
     map_public:       yes
     tags:
       Name:           "{{ aws_env }}_public_az2"
@@ -89,6 +87,7 @@
     cidr:             "{{ private_subnet_az2_cidr }}"
     az:               "{{ aws_az2 }}"
     state:            "present"
+    region:           "{{ aws_region }}"
     tags:
       Name:           "{{ aws_env }}_private_az2"
       VPC:            "{{ vpc_name }}"
@@ -204,9 +203,7 @@
       - dest: "{{ public_cidr }}"
         gateway_id: "{{ nat_gateway_id_az2 }}"
 
-# create security groups for instances in the VPC to use
-
-# Bastion server: can only be accessed by TCP from specific remote IPs
+# Bastion server: can only be accessed by TCP from specified remote IPs
 - name: Create security group for bastion server
   ec2_group:
     name: "{{ bastion_sg_name }}"
@@ -383,17 +380,13 @@
      ]
     state: "present"
 
-- name: make sure of subnet IDs
-  debug:
-      var: private_subnet_az1_id
-
 - name: Create a RDS subnet group for private subnets
   rds_subnet_group:
     name: "dbsubnetgroup_{{ vpc_name }}_private"
     description: "Allows RDS communication between private subnets"
     subnets: [ "{{ private_subnet_az1_id }}", "{{ private_subnet_az2_id }}" ]
-    state: "present"
     region: "{{ aws_region }}"
+    state: "present"
 
 - name: Create a public machine in AZ1
   ec2_instance:
@@ -460,9 +453,16 @@
   set_fact:
     vpc_id_1: "{{ private_ec2_1.instance_ids[0] }}"
 
+########################
+# Set up load balancer
+########################
+
+# Make a target group
+
 - name: Create a target group for the two public instances
   elb_target_group:
       name: mytargetgroup
+      region: "{{ aws_region }}"
       protocol: http
       port: 80
       vpc_id: "{{ vpc_id }}"
@@ -474,6 +474,8 @@
       wait_timeout: 600
       wait: True
 
+# Make Application ELB
+
 - name: Create Application Load Balancer for the two public subnets
   elb_application_lb:
     name: myelb
@@ -483,13 +485,14 @@
       - "{{ public_subnet_az1_id }}"
       - "{{ public_subnet_az2_id }}"
     listeners:
-      - Protocol: HTTP # Required. The protocol for connections from clients to the load balancer (HTTP or HTTPS) (case-sensitive).
-        Port: 80 # Required. The port on which the load balancer is listening.
+      - Protocol: HTTP
+        Port: 80
         DefaultActions:
-          - Type: forward # Required. Only 'forward' is accepted at this time
+          - Type: forward
             TargetGroupName: mytargetgroup
     state: present
 
+# Add the public EC2 instances to the ELB Target Group
 - elb_target:
     target_group_name: mytargetgroup
     target_id: "{{ item }}"
