@@ -210,11 +210,11 @@
         from_port:  "22"
         to_port:    "22"
         cidr_ip:    "{{ remote_cidr }}"
-    # rules_egress:
-    #   - proto:      "tcp"
-    #     from_port:  "22"
-    #     to_port:    "22"
-    #     group_name: "{{ private_sg_name }}"
+    rules_egress:
+      - proto:      "tcp"
+        from_port:  "22"
+        to_port:    "22"
+        group_name: "{{ private_sg_name }}"
   register: bastion_instance_sg
 
 - name: Create variable for bastion instance security group id
@@ -462,35 +462,35 @@
     - "{{ vpc_id_2 }}"
 
 #########################
-# AURORA DATABASE
+# AURORA DATABASE CAN'T BE SET UP AS STANDALONE SO THE FOLLOWING NEEDS MORE WORK
 #########################
 
-# Create subnet group
-- name: Create a RDS subnet group for private subnets
-  rds_subnet_group:
-    name: "dbsubnetgroup_{{ vpc_name }}_private"
-    description: "Allows RDS communication between private subnets"
-    subnets: [ "{{ private_subnet_az1_id }}", "{{ private_subnet_az2_id }}" ]
-    region: "{{ aws_region }}"
-    state: "present"
-  register: rds_subnet
-
-- name: check return of subnet security_group
-  debug:
-      var: rds_subnet
-
-- name: Create variable for Subnet ID
-  set_fact:
-    subnet_group_id: "{{ rds_subnet.subnet_group.vpc_id }}"
-
-- name: Set up Aurora
-  rds:
-    command: create
-    instance_name: "{{ database_name }}"
-    db_engine: aurora
-    region: "{{ aws_region }}"
-    size: 10
-    subnet: "{{ subnet_group_id }}"
-    instance_type: db.t2.small
-    username: "{{ database_user }}"
-    password: "{{ database_password }}"
+# # Create subnet group
+# - name: Create a RDS subnet group for private subnets
+#   rds_subnet_group:
+#     name: "dbsubnetgroup_{{ vpc_name }}_private"
+#     description: "Allows RDS communication between private subnets"
+#     subnets: [ "{{ private_subnet_az1_id }}", "{{ private_subnet_az2_id }}" ]
+#     region: "{{ aws_region }}"
+#     state: "present"
+#   register: rds_subnet
+#
+# - name: check return of subnet security_group
+#   debug:
+#       var: rds_subnet
+#
+# - name: Create variable for Subnet ID
+#   set_fact:
+#     subnet_group_id: "{{ rds_subnet.subnet_group.vpc_id }}"
+#
+# - name: Set up Aurora
+#   rds:
+#     command: create
+#     instance_name: "{{ database_name }}"
+#     db_engine: aurora
+#     region: "{{ aws_region }}"
+#     size: 10
+#     subnet: "dbsubnetgroup_{{ vpc_name }}_private"
+#     instance_type: db.t2.small
+#     username: "{{ database_user }}"
+#     password: "{{ database_password }}"
