@@ -44,7 +44,6 @@ Example Playbook
 
 Note: use the appropriate real-world value for your remote_cidr
 
-<<<<<<< HEAD
 =======
 Role play:
 
