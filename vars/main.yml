@@ -3,7 +3,7 @@
 # Adjust these to your specific needs...
 
 # AWS parameters
-aws_region: "us-east-1"
+aws_region: "eu-west-2"
 aws_az1: "{{ aws_region }}a"
 aws_az2: "{{ aws_region }}c"
 
@@ -23,3 +23,4 @@ public_cidr: "0.0.0.0/0"
 # security group parameters
 private_sg_name: "PrivateSecurityGroup"
 public_sg_name:  "PublicSecurityGroup"
+bastion_sg_name: "BastionServerSecurityGroup"
