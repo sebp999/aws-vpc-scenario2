@@ -25,7 +25,7 @@ Requirements
 
 - Ansible v2.7.x
 - AWS account and credentials (OS-level environment variables were used for secrets, using AWS comand line, use aws configure)
-- AWS CLI and Boto
+- AWS CLI and Boto (Boto can be installed with pip, example in Linux: ```sudo pip install botocore && sudo pip install boto3```)
 
 Role Variables
 --------------
@@ -46,7 +46,7 @@ Plays also require extra vars to be supplied on invocation via ansible-playbook:
 Example Playbook
 ----------------
 
-Note: use the appropriate real-world value for your remote_cidr
+Note: use the appropriate real-world value for your variables here.
 
 Role play:
 ~~~~
@@ -59,3 +59,9 @@ Role play:
     roles:
     - { role: aws-vpc-scenario2, remote_cidr: 92.237.9.56/32, aws_env: dev01, iam_role: , key_pair: keypair_name, database_name: testdatabase, database_user: root_user, database_password: unsafe}
 ~~~~
+
+Ansible Instructions
+--------------------
+
+Copy the above to a file, give it a name such as playbook.yml
+Run it with ```ansible-playbook playbook.yml```
