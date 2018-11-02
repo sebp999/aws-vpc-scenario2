@@ -472,8 +472,8 @@
 - name: check for DB cluster parameter group
   command: >
     aws rds describe-db-cluster-parameter-groups --no-paginate --region eu-west-2
-    changed_when: false
-    register: db_cluster_parameter_group_query
+  changed_when: false
+  register: db_cluster_parameter_group_query
 
 - name: parse DB cluster parameter group query
   set_fact:

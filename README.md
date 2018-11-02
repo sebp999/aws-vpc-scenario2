@@ -24,7 +24,7 @@ Additionally, it provides
 Requirements
 
 - Ansible v2.7.x
-- AWS account and credentials (OS-level environment variables were used for secrets)
+- AWS account and credentials (OS-level environment variables were used for secrets, using AWS comand line, use aws configure)
 - AWS CLI and Boto
 
 Role Variables
