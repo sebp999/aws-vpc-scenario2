@@ -435,7 +435,7 @@
       successful_response_codes: "200,250-260"
       state: present
       wait_timeout: 600
-      wait: True
+      # wait: True
 
 # Make Application ELB
 
