@@ -19,6 +19,7 @@ Additionally, it provides
 - a web server in each public subnet. IAM roles can be set by adding them to the ansible-playbook invocation
 - a bastion server in just one public subnet
 - an application load balancer connected to the two servers in the public subnets
+- an Aurora database cluster
 
 Requirements
 
@@ -39,7 +40,7 @@ Plays also require extra vars to be supplied on invocation via ansible-playbook:
 - key_pair - the name of the keypair to use for the EC2 instances
 - database_name - name of Aurora database that will be set up
 - database_user - root user for the Aurora database
-- database_password - password
+- database_password - root password for the database
 
 
 Example Playbook

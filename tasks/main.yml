@@ -37,9 +37,9 @@
 
 - name: Create the VPC
   ec2_vpc_net:
-    name:             "{{ vpc_name }}"
-    cidr_block:       "{{ vpc_cidr }}"
-    state:            "present"
+    name: "{{ vpc_name }}"
+    cidr_block: "{{ vpc_cidr }}"
+    state: "present"
   register: myvpc
 
 - name: Create variable for VPC ID
@@ -50,15 +50,13 @@
 
 - name: Create AZ1 public subnet
   ec2_vpc_subnet:
-    vpc_id:           "{{ vpc_id }}"
-    cidr:             "{{ public_subnet_az1_cidr }}"
-    az:               "{{ aws_az1 }}"
-    state:            "present"
-    map_public:       yes
+    vpc_id: "{{ vpc_id }}"
+    cidr: "{{ public_subnet_az1_cidr }}"
+    az: "{{ aws_az1 }}"
+    state: "present"
+    map_public: yes
     tags:
-      Name:           "{{ aws_env }}_public_az1"
-      VPC:            "{{ vpc_name }}"
-      Environment:    "{{ aws_env }}"
+      Name: "{{ aws_env }}_public_az1"
   register: pub_subnet_az1
 
 - name: Create variable for AZ1 public subnet
@@ -67,15 +65,13 @@
 
 - name: Create AZ1 private subnet
   ec2_vpc_subnet:
-    vpc_id:           "{{ vpc_id }}"
-    cidr:             "{{ private_subnet_az1_cidr }}"
-    az:               "{{ aws_az1 }}"
-    state:            "present"
-    region:           "{{ aws_region }}"
+    vpc_id: "{{ vpc_id }}"
+    cidr: "{{ private_subnet_az1_cidr }}"
+    az: "{{ aws_az1 }}"
+    state: "present"
+    region: "{{ aws_region }}"
     tags:
-      Name:           "{{ aws_env }}_private_az1"
-      VPC:            "{{ vpc_name }}"
-      Environment:    "{{ aws_env }}"
+      Name: "{{ aws_env }}_private_az1"
   register: priv_subnet_az1
 
 - name: Create variable for AZ1 private subnet
@@ -84,16 +80,14 @@
 
 - name: Create AZ2 public subnet
   ec2_vpc_subnet:
-    vpc_id:           "{{ vpc_id }}"
-    cidr:             "{{ public_subnet_az2_cidr }}"
-    az:               "{{ aws_az2 }}"
-    state:            "present"
-    region:           "{{ aws_region }}"
-    map_public:       yes
+    vpc_id: "{{ vpc_id }}"
+    cidr: "{{ public_subnet_az2_cidr }}"
+    az: "{{ aws_az2 }}"
+    state: "present"
+    region: "{{ aws_region }}"
+    map_public: yes
     tags:
-      Name:           "{{ aws_env }}_public_az2"
-      VPC:            "{{ vpc_name }}"
-      Environment:    "{{ aws_env }}"
+      Name: "{{ aws_env }}_public_az2"
   register: pub_subnet_az2
 
 - name: Create variable for AZ2 public subnet
@@ -102,15 +96,13 @@
 
 - name: Create AZ2 private subnet
   ec2_vpc_subnet:
-    vpc_id:           "{{ vpc_id }}"
-    cidr:             "{{ private_subnet_az2_cidr }}"
-    az:               "{{ aws_az2 }}"
-    state:            "present"
-    region:           "{{ aws_region }}"
+    vpc_id: "{{ vpc_id }}"
+    cidr: "{{ private_subnet_az2_cidr }}"
+    az: "{{ aws_az2 }}"
+    state: "present"
+    region: "{{ aws_region }}"
     tags:
-      Name:           "{{ aws_env }}_private_az2"
-      VPC:            "{{ vpc_name }}"
-      Environment:    "{{ aws_env }}"
+      Name: "{{ aws_env }}_private_az2"
   register: priv_subnet_az2
 
 - name: Create variable for AZ2 private subnet
@@ -162,9 +154,7 @@
   ec2_vpc_route_table:
     vpc_id: "{{ vpc_id }}"
     tags:
-      Name:           "{{ aws_env }}_public_rt"
-      VPC:            "{{ vpc_name }}"
-      Environment:    "{{ aws_env }}"
+      Name: "{{ aws_env }}_public_rt"
     subnets:
       - "{{ public_subnet_az1_id }}"
       - "{{ public_subnet_az2_id }}"
@@ -177,9 +167,9 @@
   ec2_vpc_route_table:
     vpc_id: "{{ vpc_id }}"
     tags:
-      Name:           "{{ aws_env }}_private_rt_az1"
-      VPC:            "{{ vpc_name }}"
-      Environment:    "{{ aws_env }}"
+      Name: "{{ aws_env }}_private_rt_az1"
+      VPC: "{{ vpc_name }}"
+      Environment: "{{ aws_env }}"
     subnets:
       - "{{ private_subnet_az1_id }}"
     routes:
@@ -198,6 +188,18 @@
     routes:
       - dest: "{{ public_cidr }}"
         gateway_id: "{{ nat_gateway_id_az2 }}"
+
+# This is set up so that we can use it in the bastion server rules.
+- name: Create private instance security group with no rules.
+  ec2_group:
+    name: "{{ private_sg_name }}"
+    description: "Private instance security group"
+    vpc_id: "{{ vpc_id }}"
+  register: private_instance_sg
+
+- name: Create variable for private instance security group id
+  set_fact:
+    private_instance_sg_id: "{{ private_instance_sg.group_id }}"
 
 # Bastion server: can only be accessed by TCP from specified remote IPs
 - name: Create security group for bastion server
@@ -223,32 +225,33 @@
 
 # Private servers: can be accessed http and https from machines in a private subnet
 # By SSH must be from Bastion server SG
-- name: Create private instance security group
+# This has already been set up so we are just changing it now
+- name: Change private instance security group to add rules
   ec2_group:
     name: "{{ private_sg_name }}"
     description: "Private instance security group"
     vpc_id: "{{ vpc_id }}"
     rules:
-      - proto:      "tcp"
-        from_port:  "443"
-        to_port:    "443"
+      - proto: "tcp"
+        from_port: "443"
+        to_port: "443"
         group_name: "{{ private_sg_name }}"
-      - proto:      "tcp"
-        from_port:  "22"
-        to_port:    "22"
+      - proto: "tcp"
+        from_port: "22"
+        to_port: "22"
         group_name: "{{ bastion_sg_name }}"
-      - proto:      "tcp"
-        from_port:  "3306"
-        to_port:    "3306"
-        cidr_ip:    "{{ vpc_cidr }}"
+      - proto: "tcp"
+        from_port: "3306"
+        to_port: "3306"
+        cidr_ip: "{{ vpc_cidr }}"
     rules_egress:
-      - proto:      "tcp"
-        from_port:  "443"
-        to_port:    "443"
-        cidr_ip:    "{{ public_cidr }}"
-      - proto:      "tcp"
-        from_port:  "22"
-        to_port:    "22"
+      - proto: "tcp"
+        from_port: "443"
+        to_port: "443"
+        cidr_ip: "{{ public_cidr }}"
+      - proto: "tcp"
+        from_port: "22"
+        to_port: "22"
         group_name: "{{ private_sg_name }}"
   register: private_instance_sg
 
@@ -462,35 +465,55 @@
     - "{{ vpc_id_2 }}"
 
 #########################
-# AURORA DATABASE CAN'T BE SET UP AS STANDALONE SO THE FOLLOWING NEEDS MORE WORK
+# AURORA DATABASE
 #########################
 
-# # Create subnet group
-# - name: Create a RDS subnet group for private subnets
-#   rds_subnet_group:
-#     name: "dbsubnetgroup_{{ vpc_name }}_private"
-#     description: "Allows RDS communication between private subnets"
-#     subnets: [ "{{ private_subnet_az1_id }}", "{{ private_subnet_az2_id }}" ]
-#     region: "{{ aws_region }}"
-#     state: "present"
-#   register: rds_subnet
-#
-# - name: check return of subnet security_group
-#   debug:
-#       var: rds_subnet
-#
-# - name: Create variable for Subnet ID
-#   set_fact:
-#     subnet_group_id: "{{ rds_subnet.subnet_group.vpc_id }}"
-#
-# - name: Set up Aurora
-#   rds:
-#     command: create
-#     instance_name: "{{ database_name }}"
-#     db_engine: aurora
-#     region: "{{ aws_region }}"
-#     size: 10
-#     subnet: "dbsubnetgroup_{{ vpc_name }}_private"
-#     instance_type: db.t2.small
-#     username: "{{ database_user }}"
-#     password: "{{ database_password }}"
+# See if there is a cluster parameter group in this region
+- name: check for DB cluster parameter group
+  command: >
+    aws rds describe-db-cluster-parameter-groups --no-paginate --region eu-west-2
+    changed_when: false
+    register: db_cluster_parameter_group_query
+
+- name: parse DB cluster parameter group query
+  set_fact:
+    db_cluster_parameter_group: "{{ db_cluster_parameter_group_query.stdout | from_json | json_query(query)}}"
+  vars:
+    query: DBClusterParameterGroups[?DBClusterParameterGroupName=='default-cluster-aurora-5-7'] | [0]
+
+# If there isn't one then make a parameter group
+- name: create DB cluster parameter group
+  command: >
+    aws rds create-db-cluster-parameter-group --db-cluster-parameter-group-name default-cluster-aurora-5-7 --db-parameter-group-family aurora-mysql5.7 --description "Default Aurora MySQL 5.7 cluster parameter group created by Ansible" --region eu-west-2
+  when: db_cluster_parameter_group == ''
+
+# Make a subnet group, the two private subnets
+- name: configure DB subnet group
+  rds_subnet_group:
+    name: "cluster-subnets"
+    description: "Subnets used by Aurora cluster"
+    region: eu-west-2
+    subnets:
+      - "{{ private_subnet_az1_id }}"
+      - "{{ private_subnet_az2_id }}"
+    state: present
+
+# Check if there is an Aurora cluster in the subnet group
+- name: check for Aurora DB cluster
+  command: aws rds describe-db-clusters --filters Name=db-cluster-id,Values=cluster-subnets --region eu-west-2
+  changed_when: false
+  register: aurora_cluster_query
+
+# Parse the response
+- name: parse Aurora DB cluster query
+  set_fact:
+    aurora_cluster: "{{ aurora_cluster_query.stdout | from_json | json_query('DBClusters[0]')}}"
+- name: debug
+  debug:
+    var: aurora_cluster
+
+# Create the database cluster if there is no cluster there already
+- name: create Aurora DB cluster
+  command: aws rds create-db-cluster --region eu-west-2 --availability-zones "eu-west-2b" "eu-west-2c" --db-cluster-identifier cluster-subnets --engine aurora-mysql --master-username "{{ database_user }}" --master-user-password "{{ database_password }}"
+  when: aurora_cluster == ''
+  register: aurora_cluster_create
